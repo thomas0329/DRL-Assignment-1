@@ -41,11 +41,11 @@ class SimpleTaxiEnv():
         ]
 
         self.taxi_pos = random.choice(available_positions)
-        
+        # pickup
         self.passenger_loc = random.choice([pos for pos in self.stations])
         
-        
         possible_destinations = [s for s in self.stations if s != self.passenger_loc]
+        # dropoff
         self.destination = random.choice(possible_destinations)
         
         return self.get_state(), {}
@@ -118,7 +118,7 @@ class SimpleTaxiEnv():
         passenger_loc_west  = int((taxi_row, taxi_col - 1) == self.passenger_loc)
         passenger_loc_middle  = int( (taxi_row, taxi_col) == self.passenger_loc)
         passenger_look = passenger_loc_north or passenger_loc_south or passenger_loc_east or passenger_loc_west or passenger_loc_middle
-       
+
         destination_loc_north = int( (taxi_row - 1, taxi_col) == self.destination)
         destination_loc_south = int( (taxi_row + 1, taxi_col) == self.destination)
         destination_loc_east  = int( (taxi_row, taxi_col + 1) == self.destination)
@@ -182,7 +182,8 @@ def run_agent(agent_file, env_config, render=False):
     spec.loader.exec_module(student_agent)
 
     env = SimpleTaxiEnv(**env_config)
-    obs, _ = env.reset()
+    obs, _ = env.reset()    # obs: return of reset
+    # env.passenger_loc, env.destination
     total_reward = 0
     done = False
     step_count = 0
@@ -197,9 +198,9 @@ def run_agent(agent_file, env_config, render=False):
     while not done:
         
         
-        action = student_agent.get_action(obs)
+        action = student_agent.get_action(obs)  # here
 
-        obs, reward, done, _ = env.step(action)
+        obs, reward, done, _ = env.step(action) # obs: return of step
         print('obs=',obs)
         total_reward += reward
         step_count += 1
@@ -218,5 +219,5 @@ if __name__ == "__main__":
         "fuel_limit": 5000
     }
     
-    agent_score = run_agent("student_agent.py", env_config, render=True)
+    agent_score = run_agent("student_agent.py", env_config, render=True)    # 1 epi
     print(f"Final Score: {agent_score}")
