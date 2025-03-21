@@ -28,17 +28,9 @@ device = torch.device(
 )
 
 # Load the pre-trained Q-table
-Q_net = Q_approximator(n_observations=16, n_actions=6).to(device)
+Q_net = Q_approximator(n_observations=16, n_actions=6)
 Q_net.load_state_dict(torch.load('./training_best.pt', weights_only=True))
 Q_net.eval()
-
-def select_action(state):
-    # input: tensor
-    with torch.no_grad():
-        # t.max(1) will return the largest column value of each row.
-        # second column on max result is index of where max element was
-        # found, so we pick action with the larger expected reward.
-        return Q_net(state).max(1).indices.view(1, 1)
 
 def get_action(obs):
     
