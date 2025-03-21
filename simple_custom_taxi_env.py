@@ -198,7 +198,7 @@ def run_agent(agent_file, env_config, render=False):
     while not done:
         
         
-        action = student_agent.get_action(obs)  # here
+        action = student_agent.get_action(obs)
 
         obs, reward, done, _ = env.step(action) # obs: return of step
         print('obs=',obs)

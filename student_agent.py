@@ -6,7 +6,6 @@ import gym
 import torch
 
 
-
 class Q_approximator(torch.nn.Module):
 
     def __init__(self, n_observations, n_actions):
@@ -19,11 +18,13 @@ class Q_approximator(torch.nn.Module):
         x = self.linear1(x)
         x = self.activation(x)
         x = self.linear2(x)
-        # self.layer3(x) torch.Size([2, 2])
-        print('x', x.shape)
+        
         return x
 
 # Load the pre-trained Q-table
+# Q_net = Q_approximator(n_observations=16, n_actions=6)
+# Q_net.load_state_dict(torch.load('./training_best.pt', weights_only=True))
+# Q_net.eval()
 
 def get_action(obs):
     

@@ -1,6 +1,6 @@
 from student_agent import Q_approximator
 import torch
-
+import matplotlib.pyplot as plt
 import gym
 import numpy as np
 import importlib.util
@@ -10,6 +10,7 @@ import random
 from student_agent import Q_approximator
 from simple_custom_taxi_env import SimpleTaxiEnv
 import math
+import matplotlib
 from collections import namedtuple, deque
 # BATCH_SIZE is the number of transitions sampled from the replay buffer
 # GAMMA is the discount factor as mentioned in the previous section
@@ -18,7 +19,7 @@ from collections import namedtuple, deque
 # EPS_DECAY controls the rate of exponential decay of epsilon, higher means a slower decay
 # TAU is the update rate of the target network
 # LR is the learning rate of the ``AdamW`` optimizer
-BATCH_SIZE = 2
+BATCH_SIZE = 128
 GAMMA = 0.99
 EPS_START = 0.9
 EPS_END = 0.05
@@ -67,6 +68,34 @@ memory = ReplayMemory(10000)
 
 steps_done = 0
 
+def plot_durations(episode_returns, show_result=False):
+    plt.figure(1)
+    episode_returns = torch.tensor(episode_returns, dtype=torch.float)
+    if show_result:
+        plt.title('Result')
+    else:
+        plt.clf()
+        plt.title('Training...')
+    plt.xlabel('Episode')
+    plt.ylabel('total return')
+    plt.plot(episode_returns.numpy())
+    # Take 100 episode averages and plot them too
+    # if len(durations_t) >= 100:
+    #     means = durations_t.unfold(0, 100, 1).mean(1).view(-1)
+    #     means = torch.cat((torch.zeros(99), means))
+    #     plt.plot(means.numpy())
+
+    plt.pause(0.001)  # pause a bit so that plots are updated
+    plt.savefig('training.png')
+    # is_ipython = 'inline' in matplotlib.get_backend()
+    # if is_ipython:
+    #     from IPython import display
+    #     if not show_result:
+    #         display.display(plt.gcf())
+    #         display.clear_output(wait=True)
+    #     else:
+    #         display.display(plt.gcf())
+
 
 def select_action(state):
     global steps_done
@@ -84,20 +113,17 @@ def select_action(state):
         return torch.tensor([[random.choice([0, 1, 2, 3, 4, 5])]], device=device, dtype=torch.long)
 
 
-episode_durations = []
+
 
 def optimize_model():
     if len(memory) < BATCH_SIZE:
-        print('not called')
         return
-    print('called')
+
     transitions = memory.sample(BATCH_SIZE)
     # Transpose the batch (see https://stackoverflow.com/a/19343/3343043 for
     # detailed explanation). This converts batch-array of Transitions
     # to Transition of batch-arrays.
     batch = Transition(*zip(*transitions))
-    print('batch', batch)
-    # batch should be like Transition(state=(tensor([[ 0.0390,  0.9523, -0.0552, -1.4081]]), tensor([[-0.0328,  0.3890,  0.0090, -0.6204]])), action=(tensor([[1]]), tensor([[0]])), next_state=(tensor([[ 0.0580,  1.1481, -0.0834, -1.7176]]), tensor([[-0.0250,  0.1938, -0.0034, -0.3249]])), reward=(tensor([1.]), tensor([1.])))
     
     # Compute a mask of non-final states and concatenate the batch elements
     # (a final state would've been the one after which simulation ended)
@@ -107,11 +133,9 @@ def optimize_model():
     non_final_next_states = torch.cat([s for s in batch.next_state
                                                 if s is not None])
     state_batch = torch.cat(batch.state)
-    # action should be (tensor([[1]]), tensor([[0]]))
-    # action=(5, 3)
+
     action_batch = torch.cat(batch.action)
-    # reward should be (tensor([1.]), tensor([1.])))
-    # reward=(-10.1, -0.1)
+
     reward_batch = torch.cat(batch.reward)
 
     # Compute Q(s_t, a) - the model computes Q(s_t), then we select the
@@ -119,7 +143,7 @@ def optimize_model():
     # for each batch state according to policy_net
 
     # state_batch should be of type Tensor
-    print('state_batch', state_batch.shape)
+    
     state_action_values = policy_net(state_batch).gather(1, action_batch)
 
     # Compute V(s_{t+1}) for all next states.
@@ -131,7 +155,6 @@ def optimize_model():
     # next_state_values torch.Size([2])
     with torch.no_grad():
         # target network to compute V(st+1) = max,a ​Q(st+1​,a)
-        print('non_final_next_states', non_final_next_states.shape)
         next_state_values[non_final_mask] = policy_net(non_final_next_states).max(1).values
     # Compute the expected Q values (targets)
     expected_state_action_values = (next_state_values * GAMMA) + reward_batch
@@ -159,7 +182,10 @@ def train_agent(agent_file, env_config, render=False, episodes=5000):
     spec.loader.exec_module(student_agent)
 
     env = SimpleTaxiEnv(**env_config)
-
+    
+    episode_returns = []
+    best_return = -math.inf
+    
     for episode in range(episodes):
 
         # Initialize the environment and get its state
@@ -173,32 +199,28 @@ def train_agent(agent_file, env_config, render=False, episodes=5000):
         step_count = 0
         stations = [(0, 0), (0, 4), (4, 0), (4,4)]
         
-        
-
         if render:
             env.render_env((taxi_row, taxi_col),
                         action=None, step=step_count, fuel=env.current_fuel)
             time.sleep(0.5)
-        while not done:
+            
+        while True:
             
             # action = student_agent.get_action(obs)
             action = select_action(obs)
 
-            obs, reward, terminated, truncated = env.step(action) # obs: return of step
+            next_obs, reward, terminated, truncated = env.step(action) # obs: return of step
             reward = torch.tensor([reward], device=device)
-            taxi_row, taxi_col, _,_,_,_,_,_,_,_,obstacle_north, obstacle_south, obstacle_east, obstacle_west, passenger_look,destination_look = obs
-
-            
+            taxi_row, taxi_col, _,_,_,_,_,_,_,_,obstacle_north, obstacle_south, obstacle_east, obstacle_west, passenger_look,destination_look = next_obs
 
             done = terminated or truncated
             if terminated:
                 next_obs = None
             else:
-                next_obs = torch.tensor(obs, dtype=torch.float32, device=device).unsqueeze(0)
+                next_obs = torch.tensor(next_obs, dtype=torch.float32, device=device).unsqueeze(0)
                 
-            print('obs=',obs)
+            # print('obs=',obs)
             
-            obs = torch.tensor(obs, dtype=torch.float32, device=device).unsqueeze(0)
             # Store the transition in memory
             memory.push(obs, action, next_obs, reward)
 
@@ -215,9 +237,17 @@ def train_agent(agent_file, env_config, render=False, episodes=5000):
 
             # Perform one step of the optimization (on the policy network)
             optimize_model()
-
-        print('episode', episode)
-        print(f"Agent Finished in {step_count} steps, Score: {total_reward}")
+            
+            if done:
+                episode_returns.append(total_reward)
+                # print('episode_returns', episode_returns)
+                plot_durations(episode_returns)
+                break
+        
+        print(f"episode: {episode}, Agent Finished in {step_count} steps, Score: {total_reward}")
+        if total_reward > best_return:
+            torch.save(policy_net.state_dict(), './training_best.pt')
+            best_return = total_reward
         
 
 if __name__ == "__main__":
@@ -225,7 +255,7 @@ if __name__ == "__main__":
         "fuel_limit": 5000
     }
     
-    train_agent("student_agent.py", env_config, render=True)
+    train_agent("student_agent.py", env_config, render=False)
     
 # reference
 # for i_episode in range(num_episodes):
