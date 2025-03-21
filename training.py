@@ -87,17 +87,11 @@ def plot_durations(episode_returns, show_result=False):
 
     plt.pause(0.001)  # pause a bit so that plots are updated
     plt.savefig('training.png')
-    # is_ipython = 'inline' in matplotlib.get_backend()
-    # if is_ipython:
-    #     from IPython import display
-    #     if not show_result:
-    #         display.display(plt.gcf())
-    #         display.clear_output(wait=True)
-    #     else:
-    #         display.display(plt.gcf())
+
 
 
 def select_action(state):
+    # print('select_action input', state)   # tensor
     global steps_done
     sample = random.random()
     eps_threshold = EPS_END + (EPS_START - EPS_END) * \
