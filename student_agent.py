@@ -28,8 +28,8 @@ device = torch.device(
 )
 
 # Load the pre-trained Q-table
-Q_net = Q_approximator(n_observations=16, n_actions=6)
-Q_net.load_state_dict(torch.load('./training_best.pt', weights_only=True))
+Q_net = Q_approximator(n_observations=16, n_actions=6).to(device)
+Q_net.load_state_dict(torch.load('./training_best.pt', map_location=torch.device('cpu'), weights_only=True))
 Q_net.eval()
 
 def get_action(obs):
